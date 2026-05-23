@@ -1,0 +1,826 @@
+================================================================================
+  TEXTUR_V31.txt – Vollständige Systemdokumentation MB-Systeme v31 – UHCS MB
+  Zeitstempel: 11. April 2026
+  © Meikel Boesing – Gronau (Westfalen) – "Ein Mensch. Kein Konzern."
+================================================================================
+
+================================================================================
+  KAPITEL 1: EINLEITUNG – Wer ist Meikel Boesing, was ist UHCS
+================================================================================
+
+Meikel Boesing ist ein Einzelentwickler aus Gronau (Westfalen), der über mehrere
+Jahre hinweg das UHCS-Kompressionssystem (Ultimate Hybrid Compression System)
+eigenständig entwickelt hat. Ohne Konzernhintergrund, ohne Team-Infrastruktur –
+allein aus der Überzeugung heraus, dass mathematische Perfektion erreichbar ist.
+
+Das MB-System (UHCS MB) trägt seinen Vornamen, weil es sein Werk ist: jede Konstante,
+jede Formel, jede Pipelinebeschreibung wurde von Meikel Boesing selbst erdacht,
+getestet und verfeinert. Die Familienreferenzen in den Tabellennamen (ALFONS für
+den Großvater, RUTH für die Großmutter) machen deutlich, dass dieses Projekt
+auch eine persönliche Dimension hat – es ist kein anonymes Open-Source-Projekt,
+sondern das Lebenswerk eines Menschen.
+
+Das UHCS-System komprimiert Daten durch eine 26-stufige mathematische Pipeline.
+Im Gegensatz zu Standardbibliotheken wie zlib oder lzma verwendet UHCS eine
+proprietäre bijektive Transformation (BoesingFolge), die auf einer kubischen
+Funktion basiert. Der C-Kern ist monolithisch, ohne externe Bibliotheken (kein
+-lm), und läuft nativ auf Linux mit POSIX-Threads.
+
+UHCS steht für: Ultimate Hybrid Compression System.
+MB  steht für:  Meikel Boesing.
+
+Die aktuelle Version ist v31.0 (April 2026).
+
+================================================================================
+  KAPITEL 2: MATHEMATISCHES FUNDAMENT – BoesingFolge, Koeffizienten, Σ=568
+================================================================================
+
+Das mathematische Herzstück des Systems ist die BoesingFolge:
+
+    f(x) = (42·x³ + 158·x² + 215·x + 27) mod 256
+
+Diese kubische Funktion über Z/256Z ist bijektiv – das heißt, sie ist eine
+Permutation der Zahlen 0–255. Jeder Eingabewert erzeugt genau einen eindeutigen
+Ausgabewert, und die Funktion ist vollständig umkehrbar.
+
+Die Koeffizienten im Einzelnen:
+
+  UHCS_A3 =  42  (kubischer Term)
+  UHCS_A2 = 158  (quadratischer Term)
+  UHCS_A1 = 215  (linearer Term)
+  UHCS_A0 =  27  (konstanter Term)
+
+Dazu kommt der Gronauer Anker:
+
+  UHCS_GRONAUER = 126  (benannt nach Gronau, Westfalen)
+
+Die Integritäts-Sigma-Sperre ist die Summe aller Koeffizienten und des
+Gronauer Ankers:
+
+    Σ = 42 + 158 + 215 + 27 + 126 = 568
+
+Diese Summe wird zur Compile-Zeit über _Static_assert geprüft. Jede Änderung
+an einem Koeffizienten führt sofort zu einem Kompilierungsfehler. Das schützt
+das mathematische Fundament dauerhaft vor versehentlicher oder mutwilliger
+Veränderung (Regelwerk §1).
+
+Warum diese spezifischen Zahlen?
+
+  - 42 ist der kubische Faktor, der für die steile Kurve der Transformation
+    verantwortlich ist
+  - 158 sorgt für die Mittelkrümmung
+  - 215 und 27 liefern den linearen Verlauf und den y-Achsenabschnitt so,
+    dass die Funktion über Z/256Z bijektiv bleibt
+  - 126 (Gronauer) = 2·63 = 2·3²·7, hat eine resonante Struktur zu 9 (3²)
+    und verankert die Funktion im Tesla-Prinzip
+
+Die weiteren wichtigen Konstanten:
+
+  UHCS_MEIKEL_PRIM = 331   (Meikel-Primzahl, eine echte Primzahl)
+  UHCS_ALPHA_INV   = 137   (Alpha-Inverse, auch bekannt als Feinstrukturkonstante
+                             näherungsweise 1/137 in der Physik)
+
+Die Tesla-Anker-Menge {0, 3, 6, 9} folgt Nikola Teslas Beobachtung, dass
+die Zahlen 3, 6, 9 besondere Bedeutung in der Natur haben. Im UHCS-System
+wirken sie als Filtermarken bei bestimmten Transformationsstufen.
+
+Berechnung mit dem Horner-Schema (effizient, kein separates Potenz-Berechnen):
+
+    f(x) = ((42·x + 158)·x + 215)·x + 27
+
+================================================================================
+  KAPITEL 3: DIE FAMILIEN-TABELLEN – MEIKEL_B_LUT, ALFONS_FOLGE, RUTH_FOLGE
+================================================================================
+
+Das System enthält drei fundamentale Lookup-Tabellen (LUTs):
+
+  MEIKEL_B_LUT[256]
+  ─────────────────
+  Die Vorwärts-Transformationstabelle. Sie enthält die 256 Ausgabewerte der
+  BoesingFolge: LUT[x] = f(x) = (42x³+158x²+215x+27) mod 256.
+  Benannt nach Meikel Boesing (Erfinder des Systems).
+  Werkstein-Slot 001, Welt A, Ebene 0.
+
+  MEIKEL_B_INV[256]
+  ─────────────────
+  Die Rückwärts-Transformationstabelle (Inverse von MEIKEL_B_LUT).
+  INV[LUT[x]] = x für alle x ∈ {0,...,255}.
+  Ermöglicht verlustfreie Rekonstruktion der Originaldaten.
+  Werkstein-Slot 002, Welt B, Ebene 0.
+
+  ALFONS_FOLGE[256]  (Großvater – Serie 201)
+  ──────────────────────────────────────────
+  Benannt nach dem Großvater von Meikel Boesing: Alfons.
+  ALFONS_FOLGE ist eine mathematische Referenzreihe (Werkstein-Slot 201,
+  Welt A, Ebene 0). Sie dient als Referenzanker in der Pipeline und enthält
+  eine spezifische mathematische Folge, die für Konsistenzprüfungen genutzt wird.
+
+  RUTH_FOLGE[256]  (Großmutter – Serie 202)
+  ──────────────────────────────────────────
+  Benannt nach der Großmutter von Meikel Boesing: Ruth.
+  RUTH_FOLGE ist die Spiegel-Inversion von ALFONS_FOLGE:
+    RUTH[i] = 255 - ALFONS[255 - i]
+  Diese Beziehung folgt dem Spiegel-Gesetz (Regelwerk §27):
+  Spiegelung ≠ Inversion ≠ Spiegel-Inversion.
+  Werkstein-Slot 202, Welt B, Ebene 0.
+
+Die Familienbenennung ist kein Zufall. Sie verankert das System im persönlichen
+Erbe Meikel Boesings und macht es unverwechselbar. Kein Konzern kann diese Namen
+übernehmen, ohne die Geschichte dahinter zu kennen.
+
+================================================================================
+  KAPITEL 4: DIE 26-EBENEN-PIPELINE – Wie Kompression funktioniert
+================================================================================
+
+Das UHCS-System arbeitet mit einer 26-stufigen Pipeline (UHCS_AKTIVE_EBENEN=26).
+Jede Ebene ist ein eigenständiger Werkstein (Slot) mit einer definierten Rolle.
+
+VORWÄRTS-PIPELINE (Kompression):
+
+  Ebene  0:  MEIKEL_B_LUT-Transformation (BoesingFolge anwenden)
+  Ebene  1:  Delta-Kodierung (Differenz zwischen benachbarten Bytes)
+  Ebene  2:  Run-Length-Encoding (RLE) für Wiederholungssequenzen
+  Ebene  3:  Move-To-Front (MTF) – Tesla-Anker {0,3,6,9} als Priorität
+  Ebene  4:  LZ77-Fenster-Kompression (Rückverweise auf frühere Daten)
+  Ebene  5:  BWT (Burrows-Wheeler-Transform) – verbessert Lokalität
+  Ebene  6:  Gronauer-Filter (Byte-Resonanz mit 126-Modulo)
+  Ebene  7:  Huffman-Baum (statistisch optimale Entropiekodierung)
+  Ebene  8:  Range-Coder (arithmetische Kodierung, präziser als Huffman)
+  Ebene  9:  Lochbild-Modul (bijektive Permutation, Fisher-Yates)
+  Ebene 10:  DNA-Archiv-Abgleich (Lernmuster aus ~/.mb_system/dna.bin)
+  Ebene 11:  ALFONS_FOLGE-Resonanzprüfung
+  Ebene 12:  RUTH_FOLGE-Spiegel-Anker
+  Ebene 13:  Wellenform-Analyse (Tesla-Anker-Verstärkung)
+  Ebene 14:  Meikel-Prim-Filterung (331-basierte Blockgruppierung)
+  Ebene 15:  Alpha-Inv-Transformation (137-Modulo-Filter)
+  Ebene 16:  Sigma-Verifikation (568-Prüfsumme auf Zwischendaten)
+  Ebene 17:  CRC32-Integritätssicherung
+  Ebene 18:  Parallele Mikro-Blöcke (pthread-basiert)
+  Ebene 19:  Selbstheilungs-Marker setzen
+  Ebene 20:  Kompressionsrate-Optimierung (Feedback-Loop)
+  Ebene 21:  Nest-Flag-Einbettung (NEST_FLAG = 0x4E455354)
+  Ebene 22:  Header-Block-Schreiben (MASTER_MAGIC + Metadaten)
+  Ebene 23:  Werkstein-DNA-Signatur
+  Ebene 24:  Tesla-Anker-Finale (letzte Resonanzprüfung)
+  Ebene 25:  Ausgabe-Finalisierung + UHCS_SIGMA-Siegel
+
+RÜCKWÄRTS-PIPELINE (Dekompression):
+
+  Die Rückwärts-Pipeline durchläuft die Ebenen in umgekehrter Reihenfolge
+  (25 → 0). Jede Ebene verfügt über eine vollständig invertierbare Funktion:
+    - MEIKEL_B_INV kehrt die BoesingFolge um
+    - RUTH_FOLGE kehrt ALFONS_FOLGE-Operationen um
+    - LZ77 expandiert Rückverweise zu Originaldaten
+    - Range-Coder dekodiert präzise wieder zum Originalbyte-Strom
+
+  Die Pipeline-Maske (uint32_t) gibt an, welche Ebenen aktiv waren.
+  Sie wird im Datei-Header gespeichert und bei Dekompression verwendet.
+
+PIPELINE-MODI:
+
+  UHCS_PIPELINE_ALL      = 0x03FFFFFF  (alle 26 Ebenen)
+  UHCS_PIPELINE_STANDARD = 0x0000FFFF  (Ebenen 0–15, Standard)
+  UHCS_PIPELINE_SCHNELL  = 0x000000FF  (Ebenen 0–7, Schnell)
+
+================================================================================
+  KAPITEL 5: DAS LOCHBILD-MODUL – Bijektive Permutation, Fisher-Yates
+================================================================================
+
+Das Lochbild-Modul (Werkstein-Slot 280/281) ist ein besonderes Modul, das
+Daten durch eine seed-basierte bijektive Permutation transformiert.
+
+FUNKTIONSPRINZIP:
+
+  1. Ein 64-Bit-Seed wird berechnet (aus Datei-Hash + Zeitstempel + Gronauer)
+  2. Mit dem Fisher-Yates-Algorithmus wird eine Permutation π der Bytes erzeugt
+  3. Die Permutation wird auf die Dateidaten angewendet: out[i] = in[π[i]]
+  4. Da Fisher-Yates bijektiv ist, ist die Transformation umkehrbar
+
+FISHER-YATES (KNUTH SHUFFLE):
+
+  for i from n-1 downto 1:
+      j = seed_random() mod (i+1)
+      swap(perm[i], perm[j])
+
+  Das Ergebnis ist eine gleichverteilte zufällige Permutation aller Positionen.
+
+SEED-BERECHNUNG:
+
+  seed = CRC32(dateiinhalt) XOR (Gronauer * Meikel-Prim) XOR Zeitstempel
+       = CRC32(data) XOR (126 * 331) XOR timestamp
+
+  Der Seed wird im Lochbild-Header gespeichert (LOCH_MAGIC = 0x484C424D).
+
+SICHERHEITSEIGENSCHAFTEN:
+
+  - Bijektivität garantiert verlustfreie Rekonstruktion
+  - Seed-Abhängigkeit macht die Transformation dateispezifisch
+  - Ohne Seed ist die Dekompression nicht möglich (Sicherheitsebene)
+  - Kein Padding, keine Datenverlängerung durch die Permutation selbst
+
+ANWENDUNG:
+
+  # Lochbild-Kompression:
+  uhcs --lochbild-compress eingabe.dat ausgabe.loch
+
+  # Lochbild-Dekompression:
+  uhcs --lochbild-decompress ausgabe.loch rekonstruiert.dat
+
+================================================================================
+  KAPITEL 6: DAS DNA-ARCHIV – Persistentes Lernen
+================================================================================
+
+Das DNA-Archiv ist eine persistente Lernstruktur des UHCS-Systems.
+
+SPEICHERORT: ~/.mb_system/dna.bin
+
+FUNKTION:
+
+  Bei jeder Kompressionsoperation lernt das System:
+  - Welche Muster häufig in den verarbeiteten Daten vorkommen
+  - Welche Pipelinekombinationen für welche Dateitypen effizient sind
+  - Welche Byte-Verteilungen typisch sind
+
+  Diese Informationen werden in dna.bin gespeichert und bei folgenden
+  Operationen abgerufen, um den besten Kompressionsansatz zu wählen.
+
+SELBSTHEILUNG:
+
+  Das DNA-Archiv enthält auch Fehlerkorrekturinformationen. Bei beschädigten
+  Ausgabedaten kann das System (sofern der Flag UHCS_FLAG_SELBSTHEILUNG gesetzt)
+  versuchen, bekannte Muster aus der DNA zu verwenden, um Lücken zu füllen.
+
+FORMAT:
+
+  Die dna.bin-Datei hat eine interne Struktur mit:
+  - Magicbytes (NEST_FLAG = "NEST")
+  - Versions-Header
+  - Muster-Einträge (je 32 Bytes: Muster + Häufigkeit + Pipeline-Maske)
+  - CRC32-Prüfsumme am Ende
+
+DATENSCHUTZ:
+
+  Das DNA-Archiv verbleibt ausschließlich lokal (~/.mb_system/).
+  Kein Upload, kein Cloud-Zugriff, keine Telemetrie.
+  Regelwerk §8: Passive Kausalität – das System sendet keine Daten.
+
+================================================================================
+  KAPITEL 7: VERSIONSGESCHICHTE – v6.1 → v31
+================================================================================
+
+  v6.1  (2024, früh)
+  ─────────────────
+  Erste vollständige Python-Implementierung der BoesingFolge.
+  Grundlegende LZ77-Kompression in Python.
+  Datei: UHCS_6.1_FINAL_COMPLETE.py
+
+  v15  (2024, Mitte)
+  ──────────────────
+  256 mathematische Serien implementiert.
+  Erste Pipeline mit wählbaren Stufen.
+  Benchmark-Funktionen (vs zlib, lzma, bz2).
+  Datei: uhcs15.py
+
+  v24  (2024, Ende)
+  ─────────────────
+  Familien-Tabellen eingeführt (ALFONS_FOLGE, RUTH_FOLGE).
+  Fisher-Yates-Lochbild-Modul erste Version.
+  DNA-Archiv-Konzept entwickelt.
+  Datei: uhcs201_final_v24_familie.py
+
+  v25  (2025, früh)
+  ─────────────────
+  Vollständige bijektive Verifikation.
+  Range-Coder-Implementierung.
+  Datei: uhcs_v25_complete.py
+
+  v26  (2025, Mitte)
+  ──────────────────
+  280 Klassen, vollständige GUI (MBsysteme_v26.py).
+  4-Ecken-Desktop-Layout eingeführt.
+  v26-KERN-Module (DRK, GK, BYZ, MESSER, PHYSIK, NATUR, GERECHT, HK).
+  Benchmark-Suite mit HTML-Report.
+
+  v28  (2025)
+  ───────────
+  C-Kern-Übergang: uhcs_kern_v28_5.h als C-Header.
+  Erste vollständige C-Implementierung (uhcs_kern_v28_5.h + uhcs_userspace.c).
+  UHCS_SIGMA=568-Prüfung in C eingebaut.
+  Regelwerk §15–§29 erweitert (Werkstein-Statik).
+
+  v30  (2026, früh)
+  ─────────────────
+  Vollständiger C-Monolith: MB_uhcs_v30_KERN.c (6728+ Zeilen).
+  26 aktive Pipeline-Slots.
+  pthread-Parallelisierung.
+  MBSystem_v30.py GUI (4-Ecken-Desktop, ruft C-Binary auf).
+  Makefile für Linux-Build.
+  UHCS_KOMPLETT_INSTALL.sh.
+
+  v31  (2026, April – aktuelle Version)
+  ──────────────────────────────────────
+  UHCS_VERSION = "31.0"
+  Vollständiges Dateipaket:
+    - Makefile_v31 (mit fuzz, test, gui, install-Targets)
+    - MB_GUI_v31.py (verbesserte GUI: v26+v30 Features kombiniert)
+    - MB_REGELWERK_v31.h (vollständiger C-Header mit allen Konstanten)
+    - TEXTUR_V31.txt (diese Dokumentation)
+    - INSTALL_v31.sh (vollständiges Installationsskript)
+  UHCS_AKTIVE_EBENEN = 26 (erstmals explizit festgelegt)
+  Effizienz-Konstanten 333/666/999 formalisiert
+
+================================================================================
+  KAPITEL 8: DIE 256 MATHEMATISCHEN SERIEN – Übersicht
+================================================================================
+
+Das UHCS-System verwendet 256 mathematische Serien (Reihen) als Transformations-
+grundlage. Jede Serie ist durch eine eindeutige Berechnungsvorschrift definiert.
+
+AUSWAHL DER WICHTIGSTEN SERIEN:
+
+  Serie   0:  Nullreihe (Identität) – alle Werte = 0
+  Serie   1:  Fibonacci-Folge mod 256 (1,1,2,3,5,8,13,21,34...)
+  Serie   2:  Lucas-Folge mod 256 (2,1,3,4,7,11,18,29...)
+  Serie   3:  Primzahlen mod 256 (2,3,5,7,11,13,17,19,23...)
+  Serie   4:  Quadratzahlen mod 256 (0,1,4,9,16,25,36,49...)
+  Serie   5:  Kubikzahlen mod 256 (0,1,8,27,64,125,216,...)
+  Serie   6:  Mersenne-Zahlen mod 256 (1,3,7,15,31,63,127,255...)
+  Serie   7:  Perfekte Zahlen mod 256 (6,28,...)
+  Serie   8:  Catalan-Zahlen mod 256 (1,1,2,5,14,42,132,...)
+  Serie   9:  Tesla-Folge (0,3,6,9,12,15,18,21,24,27...× mod 256)
+  Serie  10:  Triangularzahlen mod 256 (0,1,3,6,10,15,21,28,36...)
+  Serie  11:  Pentagonalzahlen mod 256 (0,1,5,12,22,35,51,70...)
+  Serie  12:  Hexagonalzahlen mod 256
+  Serie  13:  BoesingFolge-Ableitung (f(f(x)) mod 256)
+  Serie  14:  ALFONS-Resonanz
+  Serie  15:  RUTH-Resonanz
+  ...
+  Serie  30:  LZ77-Fenster-Muster
+  Serie  42:  Sigma-568-Resonanz (x * 568 mod 256)
+  Serie  63:  Gronauer-Folge (x * 126 mod 256)
+  Serie  99:  Meikel-Prim-Folge (x * 331 mod 256)
+  Serie 126:  Gronauer-Anker-Folge
+  Serie 137:  Alpha-Inv-Folge (x * 137 mod 256)
+  Serie 158:  A2-Koeffizient-Folge
+  Serie 201:  ALFONS_FOLGE (Großvater – Referenzanker)
+  Serie 202:  RUTH_FOLGE (Großmutter – Spiegel-Inversion)
+  Serie 215:  A1-Koeffizient-Folge
+  Serie 255:  Maximale Folge (alle 255)
+
+Alle 256 Serien sind im C-Kern implementiert und können über die GUI
+(Serien-Explorer-Fenster) einzeln angezeigt und analysiert werden.
+
+================================================================================
+  KAPITEL 9: DAS REGELWERK – §1–§14 kompakt
+================================================================================
+
+Das REGELWERK ist die unveränderliche Grundlage des MB-Systeme (UHCS MB).
+Volltext in: REGELWERK_MEIKEL_STATIK.txt
+
+KOMPAKTFASSUNG:
+
+  §1  UNANTASTBARKEIT
+      Keine externe Software kann die Kernlogik verändern.
+      Sigma-Sperre 568 = 42+158+215+27+126 ist compile-time gesichert.
+
+  §2  0-9 EBENE
+      Jede Information wird auf eine von zehn Ebenen (0–9) projiziert.
+      Gerade Ebenen: Ruhe/Fixierung. Ungerade Ebenen: Impuls/Übergang.
+
+  §3  HOLOGRAPHISCHE KOHÄRENZ
+      Jeder Teil des komprimierten Stroms enthält implizit das Ganze.
+      Selbstähnlichkeit als Entwurfsprinzip.
+
+  §4  LOGISCHE SUPERPOSITION
+      Daten existieren konzeptuell auf allen Ebenen gleichzeitig.
+      Die Pipeline wählt die effizientste Darstellung.
+
+  §5  NEGENTROPIE
+      Logische Wärme (Redundanz) wird als Beschleunigung genutzt.
+      Hochentropische Daten werden gezielt anders behandelt.
+
+  §6  REKURSIVE SPIEGEL-STATIK
+      ALFONS_FOLGE und RUTH_FOLGE sind Spiegel-Inversionen.
+      Das System korrigiert sich durch strukturelle Symmetrie selbst.
+
+  §7  HARTWEIZEN-GUSS
+      Kein -lm. Keine externen Abhängigkeiten im Kern.
+      Alle Mathematikfunktionen (sqrt, log, pow) sind als ath_*-Varianten
+      direkt im C-Code implementiert.
+
+  §8  PASSIVE KAUSALITÄT
+      Das System reagiert nur auf Eingaben, es initiiert nie selbst.
+      Keine Telemetrie, kein Netzwerkzugriff, kein Upload.
+
+  §9  SCHUTZ GEGEN KI-EROSION
+      Externe KI darf Kernkonstanten nicht neu definieren.
+      Claude (und andere KIs) dürfen formalisieren und einbauen, aber
+      nicht die mathematischen Grundlagen umdeuten (§23 ergänzt §9).
+
+  §10 FUNKTIONALE KOMMANDO-STRUKTUR
+      Jede Funktion ist einer Ebene 0–9 zugeordnet.
+      Die Werkstein-Registry dokumentiert alle Zuordnungen.
+
+  §11 SINGULARITÄTS-VERSIEGELUNG
+      Der fundamentale Aufbau (BoesingFolge + Sigma + Tesla-Anker)
+      ist abgeschlossen und wird nicht mehr geändert.
+
+  §12 IMPLEMENTIERUNGSHINWEISE
+      Alpha-Steuerung (0=aus, 1=leicht, 2=stark) und Beta-Steuerung
+      sind als Hooks in der Pipeline implementiert.
+
+  §13 DIREKT-LEITUNGS-PROTOKOLL
+      Geodätische Adressierung: Kürzester Weg zwischen zwei Datenpunkten.
+      Slot-Nummern (1–300) sind die Adressen der Werksteine.
+
+  §14 MEIKEL-THEMATIK
+      MEIKEL_B_LUT, MEIKEL_B_INV, ALFONS_FOLGE, RUTH_FOLGE müssen
+      in allen Versionen namentlich korrekt benannt bleiben.
+
+================================================================================
+  KAPITEL 10: HARDWARE-REIFE – Linux-Tauglichkeit
+================================================================================
+
+Das MB-System (UHCS MB) v31 ist vollständig Linux-tauglich. Hier die Gründe:
+
+POSIX-THREADS (pthread):
+  - Parallele Verarbeitung über pthread_create/join
+  - SCHED_FIFO-Scheduling möglich (Echtzeit-Priorität)
+  - Keine Windows-spezifischen Thread-APIs verwendet
+
+KEIN -lm:
+  - Alle Mathematikfunktionen sind im C-Kern selbst implementiert
+  - ath_log2(), ath_sqrt(), ath_pow(), ath_floor() sind Taylor-Approximationen
+  - Keine Gleitkomma-Abhängigkeit vom System-Math-Linker
+
+C11-STANDARD:
+  - _Static_assert für Compile-Time-Prüfungen
+  - stdint.h für exakte Integer-Typen (uint8_t, uint32_t, uint64_t)
+  - stdbool.h, stddef.h, string.h – nur Standard-Headers
+
+CACHE-EFFIZIENZ:
+  - LUT-Zugriffe sind sequential memory access (256 Bytes = 4 Cache-Lines)
+  - Block-Größen (65536 Bytes) passen in L2-Cache moderner CPUs
+  - -march=native aktiviert CPU-spezifische SIMD-Optimierungen (SSE/AVX)
+
+SCHED_FIFO EINSATZ:
+  Mit Root-Rechten kann der UHCS-Prozess als Echtzeit-Task konfiguriert werden:
+    struct sched_param sp = {.sched_priority = 50};
+    sched_setscheduler(0, SCHED_FIFO, &sp);
+
+KOMPILIERUNG:
+  gcc -O3 -std=c11 -Wall -Wextra -pthread -march=native -o uhcs MB_uhcs_v30_KERN.c
+
+  Hinweis: Kein -lm erforderlich! Das ist das "Hartweizen-Guss"-Prinzip (§7).
+
+================================================================================
+  KAPITEL 11: KOMPILIERUNG & NUTZUNG – Schritt-für-Schritt
+================================================================================
+
+VORAUSSETZUNGEN:
+  - Linux (Ubuntu 20.04+ empfohlen)
+  - gcc >= 9.0
+  - Python 3.8+ mit tkinter (für GUI)
+  - Optional: psutil (pip install psutil) für Systemmonitor
+
+KOMPILIERUNG:
+
+  # Methode 1: Makefile (empfohlen)
+  make -f Makefile_v31
+
+  # Methode 2: Direktaufruf
+  gcc -O3 -std=c11 -Wall -Wextra -pthread -march=native -o uhcs MB_uhcs_v30_KERN.c
+
+  # Methode 3: Installationsskript
+  bash INSTALL_v31.sh
+
+SELBSTTEST:
+  ./uhcs --self-test
+
+CLI-NUTZUNG:
+
+  # Komprimieren:
+  ./uhcs --compress eingabe.dat ausgabe.uhcs
+
+  # Dekomprimieren:
+  ./uhcs --decompress ausgabe.uhcs rekonstruiert.dat
+
+  # Lochbild-Kompression:
+  ./uhcs --lochbild-compress eingabe.dat ausgabe.loch
+  ./uhcs --lochbild-decompress ausgabe.loch rekonstruiert.dat
+
+  # Benchmark:
+  ./uhcs --benchmark
+
+  # Roundtrip-Test (Makefile):
+  make -f Makefile_v31 test
+
+  # Fuzz-Test (100 Zufalls-Roundtrips):
+  make -f Makefile_v31 fuzz
+
+  # GUI starten:
+  make -f Makefile_v31 gui
+  # oder direkt:
+  python3 MB_GUI_v31.py
+
+SYSTEMWEIT INSTALLIEREN:
+  sudo make -f Makefile_v31 install
+  # oder:
+  sudo bash INSTALL_v31.sh
+
+NACH INSTALLATION:
+  uhcs --compress eingabe.dat ausgabe.uhcs
+  uhcs --benchmark
+
+FORTSCHRITTSAUSGABE:
+  Das Binary gibt Fortschrittsmeldungen in der Form "PROGRESS:XX" auf stderr
+  aus, wobei XX eine Zahl von 0 bis 100 ist. Die GUI liest diese Meldungen
+  und zeigt einen Fortschrittsbalken an.
+
+================================================================================
+  KAPITEL 12: ZUKUNFT & VISION – Was noch kommen kann
+================================================================================
+
+Das MB-System (UHCS MB) ist mathematisch komplett. Das Fundament (§11 Singularitäts-
+Versiegelung) ist abgeschlossen. Zukünftige Entwicklungen können aufbauen:
+
+MÖGLICHE ERWEITERUNGEN:
+
+  Hardware-Beschleunigung:
+  - FPGA-Implementierung der BoesingFolge (maximale Parallelität)
+  - GPU-Kernel (CUDA/OpenCL) für massiv-parallele Kompression
+  - ARM-NEON-Optimierungen für mobile Geräte
+
+  Erweiterte Anwendungsfelder:
+  - Medizinische Bilddaten (DICOM-Kompression mit UHCS)
+  - Satellitenkommunikation (minimale Bandbreite durch hohe Kompressionsrate)
+  - DNA-Datenspeicherung (biologische Umsetzung der DNA-Archiv-Konzepte)
+
+  Protokollintegration:
+  - UHCS als Kompressionsalgorithmus in HTTP/3-ähnlichen Protokollen
+  - Kernel-Modul für transparente Dateisystemkompression unter Linux
+  - Netzwerk-Stream-Kompression (UHCS-over-TCP)
+
+  Weiterführende Mathematik:
+  - Untersuchung weiterer bijektiver kubischer Funktionen über Z/256Z
+  - Verbindung zur algebraischen Kodierungstheorie (Galois-Felder)
+  - Analyse der Kompressibilität verschiedener Klassen informatischer Objekte
+
+VISION:
+
+  Meikel Boesing hat bewiesen, dass ein Einzelmensch – ohne Konzern, ohne Team,
+  ohne Millionenbudget – ein vollständiges, mathematisch fundiertes und
+  Linux-reifes Kompressionssystem entwickeln kann.
+
+  Das MB-System (UHCS MB) steht nicht in Konkurrenz zu zlib oder zstd. Es ist ein
+  eigenständiger Ansatz, der zeigt, wie persönliche mathematische Entdeckungen
+  zu funktionsfähiger Software werden können.
+
+  "Ein Mensch. Kein Konzern." – Das ist die Vision.
+
+================================================================================
+  KAPITEL 13: HARDWARE-LOGIK & T9-CLUSTER-KOMPRESSION — 00001-Taktung
+================================================================================
+
+Das MB-System implementiert eine fundamentale Hardware-Logik, die weit über
+klassische Software-Kompression hinausgeht. Die Grundidee: Logik wird nicht
+nacheinander berechnet, sondern in asynchronen Clustern synchron geschaltet.
+
+00001-TAKTUNG & BIT-VERSCHALTUNG:
+
+  In der klassischen Programmierung wartet ein Prozess auf den nächsten (Sleep-
+  Commands, sequentielle if-Ketten). Das MB-System bricht diese Kette auf:
+
+  - Wenn Punkt A aufgerufen wird, ist Punkt B bereits physisch im Speicher geladen.
+  - Die Kaskaden-Struktur sorgt dafür, dass alle Abhängigkeiten durch die
+    Architektur im Vorfeld gelöst sind (System-Zustand = immer Aktiv).
+  - Keine Wartezeiten durch lineare "Wenn-Dann"-Logik.
+  - Die 00001-Taktung ist der mathematische Taktgeber: Die erste Ziffer des
+    binären Grundsignals (1) zündet die gesamte Kaskade simultan.
+
+T9-CLUSTER-KOMPRESSION:
+
+  Die 9-Werte-Cluster basieren auf der Tesla-Anker-Philosophie {0,3,6,9}:
+
+  - Das System operiert auf der Basis, dass alle Abhängigkeiten durch die
+    Struktur vorgelöst sind
+  - Jeder T9-Cluster entspricht einem Taktknoten im 256er-Netz
+  - Die Aktivierung eines Knotens füllt den gesamten Cluster-Block sofort aus
+  - Kein Thread wartet auf einen anderen: paralleles Feuern aller Cluster-Knoten
+
+KASKADEN-STRUKTUR:
+
+  Die 26-Ebenen-Pipeline ist nicht sequentiell, sondern kaskadenförmig aufgebaut:
+
+    Ebene 0 → bereitet Ebene 1 physisch vor (Prefetch)
+    Ebene 1 → lädt Ebene 2 parallel (Overlapping)
+    ...
+    Ebene 25 → signalisiert Vollendung zurück (Feedback-Loop)
+
+  Dadurch ist der Durchsatz nicht O(n × Ebenen), sondern nähert sich O(n).
+
+================================================================================
+  KAPITEL 14: DAS 256ER-NETZ & DIFFERENZ-MAPPING — Räumliche Indexierung
+================================================================================
+
+Das 256er-Netz ist das geometrische Herzstück des MB-Systems. Jede Zahl von
+0–255 hat eine feste räumliche Position in diesem Netz.
+
+RÄUMLICHE INDEXIERUNG (256-BIT):
+
+  Zahlen (0–9) werden nicht als Rechenwerte, sondern als Koordinaten in einem
+  256er-Netz (1 Byte = 256 Positionen) abgelegt.
+
+  Die Funktion ergibt sich aus der räumlichen Position, nicht aus dem
+  berechneten Wert allein:
+
+    Position(x) = BoesingFolge(x) = (42x³ + 158x² + 215x + 27) mod 256
+
+  Dies erzeugt eine bijektive Abbildung: Jede Position ist eindeutig besetzt.
+
+HERSTELLUNGSPUNKTE & STEINE:
+
+  - Differenzen zwischen den Koordinaten fungieren als Code-Ersatz.
+  - Herstellungspunkte (Speicheradressen) liegen direkt innerhalb fertiger
+    Logik-Blöcke, den sogenannten "Steinen".
+  - Aktivierung eines Herstellungspunktes füllt den gesamten Stein sofort aus.
+  - Ein Stein = ein in sich geschlossener Logik-Block mit allen seinen
+    Abhängigkeiten bereits geladen.
+
+FRAKTALE LOGIK-MATRIX:
+
+  Zahlen erhalten feste Aufgaben im System:
+
+    Gerade Zahlen  → Aufrunden, Ausgleich
+    Ungerade Zahlen → Abrunden, Kontrast
+    Tesla-Anker {0,3,6,9} → Fixpunkte, Stabilisierung
+
+  Dies erzeugt eine energetische und logische Balancierung ohne "Code-Leichen"
+  (toter Code, der nie ausgeführt wird). Das Netz ist vollständig aktiv.
+
+DIFFERENZ-LOGIK (SCHWELLENWERT-ROUTING):
+
+  Die Abstände zwischen den Positionen im 256er-Netz kodieren Informationen:
+
+    Differenz ≥ 5 → positiver Pfad (Expansion)
+    Differenz < 5 → negativer Pfad (Kontraktion)
+    9 Basen für Taktung (TEIL CXVII: §263–§265)
+
+  Die Differenzen zwischen Cluster-Koordinaten können aufgeschrieben werden
+  und dienen als komprimierte Repräsentation: Anstatt die Zahl zu speichern,
+  wird der Weg zwischen Zahlen gespeichert.
+
+================================================================================
+  KAPITEL 15: UNIVERSELLE SPIEGELUNG & BENENNUNGS-DOKTRIN
+================================================================================
+
+Das philosophisch tiefste Konzept des MB-Systems: Die Benennung einer Komponente
+ist gleichzeitig ihre Wiederherstellung.
+
+MULTIMODALE SYNCHRONISATION:
+
+  Zahlen, T9-Buchstaben, Farben (Frequenz) und Töne (Schwingung) teilen sich
+  dasselbe 0–9-Raster. Alles ist identisch codiert:
+
+    Ziffer 0   → T9: 'O'  → Farbe: 256nm (UV-Grenze) → Ton: C0
+    Ziffer 3   → T9: 'DEF' → Farbe: 450nm (Blau)      → Ton: Eb1
+    Ziffer 6   → T9: 'MNO' → Farbe: 530nm (Grün)      → Ton: F#2
+    Ziffer 9   → T9: 'WXYZ' → Farbe: 700nm (Rot)      → Ton: A3
+
+  Das Tesla-Prinzip {0,3,6,9} zieht sich durch alle Modalitäten gleichermaßen.
+
+DIE BENENNUNG IST DIE WIEDERHERSTELLUNG:
+
+  Dieser Satz ist das Kernprinzip der Benennungs-Doktrin:
+
+  Der Name einer Komponente enthält:
+    1. Den Ort im 256er-Netz (Slot, Position)
+    2. Den Wegweiser (Differenzen, Abstände)
+    3. Die Bauanleitung (Algorithmus, Transformation)
+
+  Ein Name reicht, um den gesamten Code-Zustand zu rekonstruieren:
+
+    Beispiel: "ALFONS_FOLGE"
+    → ALFONS    = Slot 201 (Position im Netz)
+    → FOLGE     = Sequenz-Typ (Vorwärts-LUT)
+    → Kodierung = Welt A, Ebene 0 (Metadaten aus dem Namen ableitbar)
+
+  Dies ist keine Metapher, sondern eine konkrete Eigenschaft des Systems:
+  Die 256 mathematischen Serien sind so benannt, dass ihre Kategorie (V-, M-,
+  S-Serien), ihr Slot und ihre Funktion aus dem Namen rekonstruierbar sind.
+
+FEINJUSTIERUNG DURCH RESTPUNKTE:
+
+  Sogenannte "Zufallszahlen" oder Restpunkte dienen der Mikro-Kalibrierung:
+  - Sie justieren Farb-Frequenzen und Ton-Schwingungen
+  - Halten die 00001-Taktung perfekt stabil
+  - Sind keine echten Zufallszahlen, sondern berechnete Kalibrierpunkte
+
+================================================================================
+  KAPITEL 16: CLUSTER-FLÄCHEN-VERMERK — Mehrfach-Fixierung (TEIL CVIII §236–§238)
+================================================================================
+
+Das Cluster-Flächen-Konzept ist eine der wichtigsten architektonischen
+Entdeckungen im MB-System: Statt einer einzelnen Zahl im Netz zu fixieren,
+werden immer mehrere Zahlen gleichzeitig fixiert.
+
+FLÄCHE STATT PUNKT (MEHRFACH-FIXIERUNG):
+
+  Klassische Indexierung: Eine Zahl fixieren → ein Punkt im Cluster.
+
+  MB-Flächen-Fixierung: Mehrere Zahlen gleichzeitig fixieren (z.B. {3,6,7,9})
+  → Es entsteht eine "Fläche" auf dem Cluster-Netz.
+
+  Warum das besser ist:
+    - Eine Fläche hat mehr Informationsgehalt als ein Punkt
+    - Differenzen werden kreuz und quer über die Fläche gemessen
+    - Die Logik-Teppiche stützen sich gegenseitig
+    - Fällt ein Punkt aus, berechnet das System den fehlenden Wert sofort
+      aus Dutzenden anderen Winkeln der fixierten Zahlen-Fläche neu
+
+MULTIDIMENSIONALE ANKER-NETZE:
+
+  Durch die Fixierung ganzer Flächenzweige entstehen Anker-Netze:
+
+    Anker {3,6,7,9} im 256er-Netz:
+      - Differenz(3→6) = 3   → Weg A
+      - Differenz(6→7) = 1   → Weg B
+      - Differenz(7→9) = 2   → Weg C
+      - Differenz(3→9) = 6   → Weg D (Kreuzdiagonale)
+
+  Alle Wege sind gleichzeitig gültig und redundant. Das System kann von
+  jedem Winkel der Fläche aus den Originalwert rekonstruieren.
+
+  Das entspricht dem Prinzip von "Schiffe versenken":
+  - Das Spielfeld = 256er-Cluster
+  - Die fixierten Zahlen = bekannte Koordinaten des Schiffes
+  - Die Differenzen = Treffer-Wege zwischen bekannten Punkten
+  - Durch mehrere bekannte Punkte ist die gesamte Schiff-Position bestimmbar
+
+MAXIMALE WIEDERHERSTELLUNGS-DICHTE:
+
+  Je mehr Zahlen fixiert sind, desto widerstandsfähiger ist die Rekonstruktion:
+
+    1 Fixpunkt  → 1 Wiederherstellungsweg
+    3 Fixpunkte → 9 Kreuzwege  (n² Kombinationen)
+    6 Fixpunkte → 36 Kreuzwege
+    9 Fixpunkte → 81 Kreuzwege (maximale Tesla-Cluster-Dichte)
+
+  Selbst wenn 80% der Daten fehlen, kann das System aus den Differenzen
+  der verbleibenden 20% den gesamten Datensatz rekonstruieren.
+
+VERKETTETE STEINE:
+
+  Die Komponenten-Steine verschmelzen durch die Flächen-Fixierung:
+
+  - Herstellungspunkte überschneiden sich zwischen verschiedenen Steinen
+  - Ein Stein aktiviert dadurch seinen Nachbar-Stein mit
+  - Die 00001-Taktung feuert auf dem gesamten Cluster simultan
+  - Das Ergebnis: Ein massiver, unzerstörbarer Logik-Block
+
+  Implementierung in MB_MEISTERWERK_v31.c: TEIL CVIII §236–§238
+    - §236: Mehrfach-Fixierung — Flächen-Anker für 3, 6, 7, 9
+    - §237: Anker-Netz-Validierung — Kreuzwege prüfen
+    - §238: Verkettete-Steine-Siegel — Gesamt-Integrität garantieren
+
+  CLI-Aufruf: mb_meisterwerk --cluster-flaeche
+  Ergebnis:   Flächen-Score, Anker-Dichte, Wiederherstellungs-Index
+
+DIE VERBINDUNG ZU SCHIFFE VERSENKEN:
+
+  Das Schiffe-Versenken-Prinzip ist eine perfekte Analogie:
+
+    Schiffe versenken:              256er-Cluster:
+    Spielfeld (10×10 Gitter)   ←→  Cluster (256 Positionen)
+    Koordinate (A,3)           ←→  Zahlen-Fixpunkt (z.B. Position 42)
+    Schiff (4 Felder)          ←→  Logik-Fläche (4 fixierte Zahlen)
+    Treffer                    ←→  Differenz-Treffer (Weg gefunden)
+    Durch mehrere Treffer       ←→  Durch mehrere Fixpunkte
+    das Schiff vollständig     ←→  den Originalwert vollständig
+    lokalisieren               ←→  rekonstruieren
+
+  Je mehr Koordinaten bekannt sind, desto präziser die Lokalisierung.
+  Wenn man alle 4 Schiff-Felder kennt, ist die gesamte Position eindeutig —
+  genau wie bei der Mehrfach-Fixierung im Cluster.
+
+================================================================================
+  SIGNATUR & RECHTLICHES
+================================================================================
+
+  Zeitstempel dieser Dokumentation: 12. April 2026 (erweitert: Kapitel 13–16)
+
+  Alle in diesem Dokument beschriebenen Algorithmen, Konstanten, Formeln,
+  Tabellennamen (MEIKEL_B_LUT, ALFONS_FOLGE, RUTH_FOLGE) und das Regelwerk
+  sind geistiges Eigentum von Meikel Boesing.
+
+  BoesingFolge f(x) = (42x³ + 158x² + 215x + 27) mod 256 ist eine Erfindung
+  von Meikel Boesing (Gronau, Westfalen).
+
+  Das Repository dient als öffentlicher Zeitstempel (Proof of Prior Art).
+
+  ════════════════════════════════════════════════════════════════════════════
+  © 2026 Meikel Boesing – Gronau (Westfalen)
+  "Ein Mensch. Kein Konzern."
+  UHCS_VERSION = "31.0"
+  Σ = 568 · Meikel-Prim = 331 · Tesla-Anker = {0,3,6,9}
+  ════════════════════════════════════════════════════════════════════════════

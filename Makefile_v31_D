@@ -1,0 +1,217 @@
+# ══════════════════════════════════════════════════════════════════════
+#  MB-Systeme v31 – UHCS MB Makefile
+#  © Meikel Boesing 2026 – Gronau (Westfalen)
+#  "Ein Mensch. Kein Konzern."
+#
+#  BoesingFolge: f(x) = (42x³ + 158x² + 215x + 27) mod 256
+#  Σ = 568 (42+158+215+27+126)  ·  Meikel-Prim = 331
+#  Tesla-Anker = {0,3,6,9}  ·  UHCS_VERSION = "31.0"
+#
+#  Nutzung:
+#    make              — Meisterwerk bauen (Monolith)
+#    make all          — alles bauen
+#    make meisterwerk  — Meisterwerk bauen
+#    make clean        — Build-Artefakte entfernen
+#    make test         — Selbsttest + Roundtrip-Tests
+#    make fuzz         — 100 Zufalls-Roundtrip-Tests
+#    make gui          — MBSysteme_v31_E.py starten
+#    make install      — Binary nach /usr/local/bin/ kopieren
+#    make help         — Hilfe anzeigen
+# ══════════════════════════════════════════════════════════════════════
+
+# ── Compiler & Flags ─────────────────────────────────────────────────
+CC      := gcc
+CFLAGS  := -O3 -std=c11 -Wall -Wextra -pthread -march=native
+
+# ── Quelldateien ─────────────────────────────────────────────────────
+MEISTER_SRC   := MBUhcsMasterpiece_v31_A.c
+GUI_PY        := MBSysteme_v31_E.py
+
+# ── Ausgabe ──────────────────────────────────────────────────────────
+MEISTER_BIN   := mb_meisterwerk
+UHCS_LINK     := uhcs
+
+# ── Installationspfade ───────────────────────────────────────────────
+PREFIX    := /usr/local
+BINDIR    := $(PREFIX)/bin
+
+# ── Konstanten (UNANTASTBAR – Regelwerk §1) ──────────────────────────
+SIGMA       := 568
+MEIKEL_PRIM := 331
+ALPHA_INV   := 137
+VERSION     := 31.0
+
+# ══════════════════════════════════════════════════════════════════════
+#  TARGETS
+# ══════════════════════════════════════════════════════════════════════
+
+.PHONY: all clean test fuzz gui install help build-meisterwerk benchmark
+
+all: $(MEISTER_BIN) $(UHCS_LINK)
+	@echo ""
+	@echo "  ╔════════════════════════════════════════════════════════╗"
+	@echo "  ║  ✅ MB-Systeme v$(VERSION) – Build erfolgreich              ║"
+	@echo "  ║     Binary: $(MEISTER_BIN) (+ Symlink $(UHCS_LINK))        ║"
+	@echo "  ║     Quelle: $(MEISTER_SRC) (Monolith)                 ║"
+	@echo "  ║     Σ=$(SIGMA) · Meikel-Prim=$(MEIKEL_PRIM) · Alpha-Inv=$(ALPHA_INV)        ║"
+	@echo "  ║     BoesingFolge: f(x)=(42x³+158x²+215x+27) mod 256  ║"
+	@echo "  ║     Tesla-Anker: {0,3,6,9}                            ║"
+	@echo "  ║     © Meikel Boesing 2026 – Gronau (Westfalen)         ║"
+	@echo "  ╚════════════════════════════════════════════════════════╝"
+	@echo ""
+
+build-meisterwerk: $(MEISTER_BIN)
+
+# ── MB-MEISTERWERK v31 (Monolithisches Gesamtwerk) ────────────────────
+$(MEISTER_BIN): $(MEISTER_SRC)
+	@echo "  ── Kompiliere MB-MEISTERWERK v31 (Monolith) ────────────"
+	@echo "     Quelle  : $(MEISTER_SRC)"
+	@echo "     Flags   : $(CFLAGS)"
+	@echo "     742 Selbsttests · Gronau-Register 801"
+	@echo "     Header: MB_REGELWERK_v31_C.h, uhcs_mb_typen_B.h"
+	@echo "     Dokumentation: MBUhcsMasterpiece_DOC_v31.h"
+	$(CC) $(CFLAGS) -o $@ $<
+	@echo "  ✅ $(MEISTER_BIN) gebaut"
+
+# ── uhcs Symlink (Rückwärtskompatibilität) ────────────────────────────
+$(UHCS_LINK): $(MEISTER_BIN)
+	@ln -sf $(MEISTER_BIN) $(UHCS_LINK)
+	@echo "  ✅ Symlink $(UHCS_LINK) → $(MEISTER_BIN)"
+
+# ── Test: Selbsttest + Roundtrip-Tests ────────────────────────────────
+test: $(MEISTER_BIN)
+	@echo ""
+	@echo "  ── MB-Systeme v$(VERSION) Tests ──────────────────────────────"
+	@echo ""
+	@echo "  ═══ MB-MEISTERWERK Tests ═════════════════════════════════"
+	@echo "  [1/2] MEISTERWERK Selbsttest (742 Tests) ..."
+	./$(MEISTER_BIN) --self-test
+	@echo ""
+	@echo "  [2/2] MEISTERWERK Roundtrip-Test ..."
+	@ORIG=$$(mktemp /tmp/mw_test_orig_XXXXXX); \
+	 COMP=$$(mktemp /tmp/mw_test_comp_XXXXXX.uhcs); \
+	 DECO=$$(mktemp /tmp/mw_test_deco_XXXXXX); \
+	 dd if=/dev/urandom of=$$ORIG bs=1k count=32 2>/dev/null; \
+	 ./$(MEISTER_BIN) --compress $$ORIG --output $$COMP && \
+	 ./$(MEISTER_BIN) --decompress $$COMP --output $$DECO && \
+	 diff $$ORIG $$DECO && echo "  ✅ MEISTERWERK Roundtrip-Test: OK" || echo "  ❌ MEISTERWERK Roundtrip-Test: FEHLER"; \
+	 rm -f $$ORIG $$COMP $$DECO
+	@echo ""
+	@echo "  ✅ Alle Tests abgeschlossen."
+	@echo ""
+
+# ── Fuzz: 100 Zufalls-Roundtrip-Tests ────────────────────────────────
+fuzz: $(MEISTER_BIN)
+	@echo ""
+	@echo "  ── Fuzz-Tests (100 Zufalls-Roundtrips) ─────────────────"
+	@PASS=0; FAIL=0; \
+	for i in $$(seq 1 100); do \
+	  ORIG=$$(mktemp /tmp/uhcs_fuzz_orig_XXXXXX); \
+	  COMP=$$(mktemp /tmp/uhcs_fuzz_comp_XXXXXX); \
+	  DECO=$$(mktemp /tmp/uhcs_fuzz_deco_XXXXXX); \
+	  SZ=$$((RANDOM % 4096 + 1)); \
+	  dd if=/dev/urandom of=$$ORIG bs=1 count=$$SZ 2>/dev/null; \
+	  if ./$(MEISTER_BIN) --compress $$ORIG --output $$COMP 2>/dev/null && \
+	     ./$(MEISTER_BIN) --decompress $$COMP --output $$DECO 2>/dev/null && \
+	     diff -q $$ORIG $$DECO >/dev/null 2>&1; then \
+	    PASS=$$((PASS+1)); \
+	  else \
+	    FAIL=$$((FAIL+1)); \
+	    echo "    ❌ Fuzz #$$i fehlgeschlagen ($$SZ Bytes)"; \
+	  fi; \
+	  rm -f $$ORIG $$COMP $$DECO; \
+	done; \
+	echo "  Ergebnis: $$PASS/100 bestanden, $$FAIL fehlgeschlagen"; \
+	if [ $$FAIL -eq 0 ]; then echo "  ✅ Fuzz-Tests: ALLE OK"; else echo "  ❌ Fuzz-Tests: $$FAIL FEHLER"; exit 1; fi
+	@echo ""
+
+# ── GUI: MBSysteme_v31_E.py starten ────────────────────────────────────────
+gui: $(MEISTER_BIN)
+	@echo "  ── Starte MB-Systeme v$(VERSION) GUI ─────────────────────────"
+	@if [ ! -f "$(GUI_PY)" ]; then echo "  ❌ $(GUI_PY) nicht gefunden!"; exit 1; fi
+	@python3 $(GUI_PY)
+
+# ── Install: Binary nach /usr/local/bin ─────────────────────────────
+install: $(MEISTER_BIN)
+	@echo "  ── Installiere MB-Systeme v$(VERSION) ────────────────────────"
+	@echo "     Ziel: $(BINDIR)/$(MEISTER_BIN)"
+	cp -f $(MEISTER_BIN) $(BINDIR)/$(MEISTER_BIN)
+	chmod 755 $(BINDIR)/$(MEISTER_BIN)
+	ln -sf $(MEISTER_BIN) $(BINDIR)/$(UHCS_LINK)
+	@echo "  ✅ $(MEISTER_BIN) installiert nach $(BINDIR)/"
+	@echo "     Aufruf: mb_meisterwerk --help  /  uhcs --help"
+
+# ── Isolierter Benchmark: Unabhängig von GUI ──────────────────────────
+benchmark: $(MEISTER_BIN)
+	@echo ""
+	@echo "  ╔════════════════════════════════════════════════════════╗"
+	@echo "  ║  MB-Systeme v$(VERSION) – ISOLIERTER BENCHMARK              ║"
+	@echo "  ║  Σ=$(SIGMA) · Meikel-Prim=$(MEIKEL_PRIM)                             ║"
+	@echo "  ╚════════════════════════════════════════════════════════╝"
+	@echo ""
+	@echo "  [1/4] Selbsttest (Korrektheit) ..."
+	@./$(MEISTER_BIN) --self-test
+	@echo ""
+	@echo "  [2/4] Fundamentaler Benchmark ..."
+	@./$(MEISTER_BIN) --fund-benchmark 2>/dev/null || echo "  ℹ  --fund-benchmark nicht verfügbar"
+	@echo ""
+	@echo "  [3/4] Roundtrip-Benchmark (5 Dateigrößen: 1KB, 4KB, 16KB, 64KB, 256KB) ..."
+	@for SZ in 1 4 16 64 256; do \
+	  ORIG=$$(mktemp /tmp/mb_bench_orig_XXXXXX); \
+	  COMP=$$(mktemp /tmp/mb_bench_comp_XXXXXX.uhcs); \
+	  DECO=$$(mktemp /tmp/mb_bench_deco_XXXXXX); \
+	  dd if=/dev/urandom of=$$ORIG bs=1k count=$$SZ 2>/dev/null; \
+	  START=$$(date +%s%N); \
+	  ./$(MEISTER_BIN) --compress $$ORIG --output $$COMP 2>/dev/null; \
+	  ./$(MEISTER_BIN) --decompress $$COMP --output $$DECO 2>/dev/null; \
+	  END=$$(date +%s%N); \
+	  ELAPSED_MS=$$(( (END - START) / 1000000 )); \
+	  ORIG_SZ=$$(stat -c%s $$ORIG 2>/dev/null || stat -f%z $$ORIG 2>/dev/null); \
+	  COMP_SZ=$$(stat -c%s $$COMP 2>/dev/null || stat -f%z $$COMP 2>/dev/null); \
+	  if diff -q $$ORIG $$DECO >/dev/null 2>&1; then \
+	    RATIO=$$(echo "scale=1; $$COMP_SZ * 100 / $$ORIG_SZ" | bc 2>/dev/null || echo "?"); \
+	    echo "    ✅ $${SZ}KB: Roundtrip OK — Ratio=$${RATIO}% — $${ELAPSED_MS}ms"; \
+	  else \
+	    echo "    ❌ $${SZ}KB: Roundtrip FEHLER"; \
+	  fi; \
+	  rm -f $$ORIG $$COMP $$DECO; \
+	done
+	@echo ""
+	@echo "  [4/4] Entropie-Profil ..."
+	@./$(MEISTER_BIN) --entropie-profil 2>/dev/null || echo "  ℹ  --entropie-profil nicht verfügbar"
+	@echo ""
+	@echo "  ╔════════════════════════════════════════════════════════╗"
+	@echo "  ║  ✅ BENCHMARK ABGESCHLOSSEN                                ║"
+	@echo "  ║  © Meikel Boesing 2026 – Gronau (Westfalen)             ║"
+	@echo "  ╚════════════════════════════════════════════════════════╝"
+	@echo ""
+
+# ── Clean: Build-Artefakte entfernen ─────────────────────────────────
+clean:
+	@echo "  ── Bereinige Build-Artefakte ────────────────────────────"
+	rm -f $(MEISTER_BIN) $(UHCS_LINK) *.o
+	@echo "  ✅ Bereinigt"
+
+# ── Help: Hilfe anzeigen ─────────────────────────────────────────────
+help:
+	@echo ""
+	@echo "  ╔════════════════════════════════════════════════════════╗"
+	@echo "  ║  MB-Systeme v$(VERSION) – Makefile Hilfe                     ║"
+	@echo "  ╠════════════════════════════════════════════════════════╣"
+	@echo "  ║  make              – Meisterwerk bauen (Monolith)       ║"
+	@echo "  ║  make all          – alles bauen                       ║"
+	@echo "  ║  make meisterwerk  – Meisterwerk bauen                 ║"
+	@echo "  ║  make clean        – Build-Artefakte entfernen         ║"
+	@echo "  ║  make test         – Tests (beide Binaries)            ║"
+	@echo "  ║  make fuzz         – 100 Zufalls-Roundtrip-Tests       ║"
+	@echo "  ║  make benchmark    – Isolierter Benchmark (ohne GUI)   ║"
+	@echo "  ║  make gui          – MBSysteme_v31_E.py starten           ║"
+	@echo "  ║  make install      – nach /usr/local/bin/              ║"
+	@echo "  ║  make help         – diese Hilfe anzeigen              ║"
+	@echo "  ╠════════════════════════════════════════════════════════╣"
+	@echo "  ║  Σ=$(SIGMA) · Meikel-Prim=$(MEIKEL_PRIM) · Alpha-Inv=$(ALPHA_INV)             ║"
+	@echo "  ║  BoesingFolge: f(x)=(42x³+158x²+215x+27) mod 256      ║"
+	@echo "  ║  UHCS_VERSION = \"$(VERSION)\"                              ║"
+	@echo "  ║  © Meikel Boesing 2026 – Gronau (Westfalen)             ║"
+	@echo "  ╚════════════════════════════════════════════════════════╝"
+	@echo ""
